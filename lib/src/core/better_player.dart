@@ -23,28 +23,13 @@ class BetterPlayer extends StatefulWidget {
         ),
       );
 
-  factory BetterPlayer.file(
-    String url, {
-    BetterPlayerConfiguration? betterPlayerConfiguration,
-  }) =>
-      BetterPlayer(
-        controller: BetterPlayerController(
-          betterPlayerConfiguration ?? const BetterPlayerConfiguration(),
-          betterPlayerDataSource: BetterPlayerDataSource(BetterPlayerDataSourceType.file, url),
-        ),
-      );
-
   final BetterPlayerController controller;
 
   @override
-  _BetterPlayerState createState() {
-    return _BetterPlayerState();
-  }
+  _BetterPlayerWidgetState createState() => _BetterPlayerWidgetState();
 }
 
 class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver {
-  BetterPlayerConfiguration get _betterPlayerConfiguration => widget.controller.betterPlayerConfiguration;
-
   bool _isFullScreen = false;
   late NavigatorState _navigatorState;
   bool _initialized = false;
@@ -86,8 +71,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
     if (_isFullScreen) {
       WakelockPlus.disable();
       _navigatorState.maybePop();
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: _betterPlayerConfiguration.systemOverlaysAfterFullScreen);
-      SystemChrome.setPreferredOrientations(_betterPlayerConfiguration.deviceOrientationsAfterFullScreen);
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     }
 
     WidgetsBinding.instance.removeObserver(this);
@@ -98,8 +82,9 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
   }
 
   @override
-  void didUpdateWidget(BetterPlayer oldWidget) {
+  void didUpdateWidget(BetterPlayerWidget oldWidget) {
     if (oldWidget.controller != widget.controller) {
+      _controllerEventSubscription?.cancel();
       _controllerEventSubscription = widget.controller.controllerEventStream.listen(onControllerEvent);
     }
     super.didUpdateWidget(oldWidget);
@@ -124,13 +109,16 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
     if (controller.isFullScreen && !_isFullScreen) {
       // Entering fullscreen mode
       _isFullScreen = true;
+
+      // Save position and playback state
       _lastPosition = controller.videoPlayerController?.value.position;
       final wasPlaying = controller.isPlaying();
 
+      // Trigger full-screen entry
       controller.postEvent(BetterPlayerEvent(BetterPlayerEventType.openFullscreen));
       await _pushFullScreenWidget(context);
 
-      // Restore playback position and play state after entering fullscreen
+      // Restore playback state and position after entering fullscreen
       if (_lastPosition != null) {
         await controller.seekTo(_lastPosition!);
       }
@@ -141,6 +129,8 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
       // Exiting fullscreen mode
       Navigator.of(context, rootNavigator: true).pop();
       _isFullScreen = false;
+
+      // Trigger full-screen exit
       controller.postEvent(BetterPlayerEvent(BetterPlayerEventType.hideFullscreen));
     }
   }
@@ -179,12 +169,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
     Animation<double> secondaryAnimation,
   ) {
     final controllerProvider = BetterPlayerControllerProvider(controller: widget.controller, child: _buildPlayer());
-    final routePageBuilder = _betterPlayerConfiguration.routePageBuilder;
-    if (routePageBuilder == null) {
-      return _defaultRoutePageBuilder(context, animation, secondaryAnimation, controllerProvider);
-    }
-
-    return routePageBuilder(context, animation, secondaryAnimation, controllerProvider);
+    return _defaultRoutePageBuilder(context, animation, secondaryAnimation, controllerProvider);
   }
 
   Future<dynamic> _pushFullScreenWidget(BuildContext context) async {
@@ -195,7 +180,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
 
     await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-    if (_betterPlayerConfiguration.autoDetectFullscreenDeviceOrientation == true) {
+    if (widget.controller.betterPlayerConfiguration.autoDetectFullscreenDeviceOrientation == true) {
       final aspectRatio = widget.controller.videoPlayerController?.value.aspectRatio ?? 1.0;
       List<DeviceOrientation> deviceOrientations;
       if (aspectRatio < 1.0) {
@@ -210,7 +195,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
       );
     }
 
-    if (!_betterPlayerConfiguration.allowedScreenSleep) {
+    if (!widget.controller.betterPlayerConfiguration.allowedScreenSleep) {
       WakelockPlus.enable();
     }
 
@@ -218,8 +203,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
     _isFullScreen = false;
     widget.controller.exitFullScreen();
     WakelockPlus.disable();
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: _betterPlayerConfiguration.systemOverlaysAfterFullScreen);
-    await SystemChrome.setPreferredOrientations(_betterPlayerConfiguration.deviceOrientationsAfterFullScreen);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
   }
 
   Widget _buildPlayer() {
