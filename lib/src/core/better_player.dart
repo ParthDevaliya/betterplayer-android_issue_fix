@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-/// Widget which uses provided controller to render video player.
+/// Widget that uses provided controller to render video player.
 class BetterPlayer extends StatefulWidget {
   const BetterPlayer({Key? key, required this.controller}) : super(key: key);
 
@@ -121,8 +121,8 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
 
   Future<void> onFullScreenChanged() async {
     final controller = widget.controller;
-
     if (controller.isFullScreen && !_isFullScreen) {
+      // Entering fullscreen mode
       _isFullScreen = true;
       _lastPosition = controller.videoPlayerController?.value.position;
       final wasPlaying = controller.isPlaying();
@@ -130,6 +130,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
       controller.postEvent(BetterPlayerEvent(BetterPlayerEventType.openFullscreen));
       await _pushFullScreenWidget(context);
 
+      // Restore playback position and play state after entering fullscreen
       if (_lastPosition != null) {
         await controller.seekTo(_lastPosition!);
       }
@@ -137,6 +138,7 @@ class _BetterPlayerState extends State<BetterPlayer> with WidgetsBindingObserver
         controller.play();
       }
     } else if (_isFullScreen) {
+      // Exiting fullscreen mode
       Navigator.of(context, rootNavigator: true).pop();
       _isFullScreen = false;
       controller.postEvent(BetterPlayerEvent(BetterPlayerEventType.hideFullscreen));
