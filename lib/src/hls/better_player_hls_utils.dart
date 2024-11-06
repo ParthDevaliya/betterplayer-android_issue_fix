@@ -12,7 +12,6 @@ import 'package:better_player/src/hls/hls_parser/rendition.dart';
 import 'package:better_player/src/hls/hls_parser/segment.dart';
 import 'package:better_player/src/hls/hls_parser/util.dart';
 
-///HLS helper class
 class BetterPlayerHlsUtils {
   static Future<BetterPlayerAsmsDataHolder> parse(
       String data, String masterPlaylistUrl) async {
